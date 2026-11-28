@@ -1,192 +1,68 @@
-# Two-Level Grouped Budgeted Uncertainty for Robust DEA of European Banks
+# Grouped Budgeted Uncertainty DEA — reproducibility package
 
-This repository contains a Python implementation of an input-oriented, variable-returns-to-scale (BCC) Data Envelopment Analysis model with a two-level grouped budgeted uncertainty set. The empirical application compares the proposed grouped-budgeted uncertainty (GBU) specification with a conventional single-level Bertsimas–Sim (BS) budgeted uncertainty specification.
-
-The implementation reads a supplementary Excel workbook containing observations for 250 European banks in 23 countries. It estimates conventional group and pooled metafrontier scores, robust scores under a grid of uncertainty scenarios, and a set of score, ranking, monotonicity, and support-function diagnostics.
+This repository provides code for the revised 3-input/3-output European-bank application in the manuscript. It includes the main 12-scenario comparison and the separate 1,000 within-region random-partition experiment.
 
 ## Repository contents
 
 ```text
 .
+├── GDEA_reproducibility.ipynb
 ├── README.md
-├── GDEA_GitHub.ipynb
-├── run_gbu_dea.py
 ├── requirements.txt
 ├── .gitignore
 ├── data/
 │   └── README.md
-└── results/
-    └── .gitkeep
+├── results/
+│   └── .gitkeep
+└── scripts/
+    ├── run_main_analysis.py
+    ├── run_random_partitions.py
+    └── validate_results.py
 ```
 
-- `run_gbu_dea.py`: end-to-end implementation of the empirical analysis.
-- `GDEA_GitHub.ipynb`: notebook interface to the analysis.
-- `requirements.txt`: Python package requirements.
-- `data/README.md`: instructions for obtaining and placing the source workbook.
-- `results/`: destination for generated tables and score files. Generated results are not committed by default.
+## Data requirement
 
-## Data
-
-The analysis expects the following Excel workbook:
+The source workbook is **not included**. Obtain `1-s2.0-S2352340918314410-mmc2.xlsx` from the supplementary materials of the source publication, check the applicable terms, and place it at:
 
 ```text
-1-s2.0-S2352340918314410-mmc2(1).xlsx
+data/1-s2.0-S2352340918314410-mmc2.xlsx
 ```
 
-Place it in the repository's `data/` directory:
+The code expects the workbook columns named in the scripts, including `BANKS`, `COUNTRY`, the three selected input columns, and the three selected output columns. It checks the expected 250 observations and regional sample sizes before estimation.
 
-```text
-data/1-s2.0-S2352340918314410-mmc2(1).xlsx
-```
+## Environment
 
-The script reads the first worksheet. It expects 250 observations and the bank and country identifiers, together with the following variables (column names are normalized for surrounding whitespace):
-
-**Inputs**
-
-1. `Employees (I)`
-2. `Assets (I)`
-3. `Personnel Expenses (I)`
-
-**Outputs**
-
-1. `Loans (O)`
-2. `Net Income Revenue (O)`
-3. `Net Fees Commission (O)`
-
-The source data are not included in this repository. Obtain the workbook from its original source and check its citation and redistribution terms before using or sharing it. Do not upload bank-level data to a public repository unless redistribution is permitted.
-
-## Empirical grouping
-
-The 250 banks are assigned to four regional DEA frontiers. The regional sample sizes used by the script are:
-
-| Regional frontier | Number of banks |
-|---|---:|
-| Eastern Europe | 22 |
-| Northern Europe | 33 |
-| Southern Europe | 66 |
-| Western Europe | 129 |
-| **Total** | **250** |
-
-The pooled metafrontier uses all 250 banks. The uncertainty groups are **countries**, not regions. Thus, each regional frontier contains the country groups belonging to that region, while the pooled metafrontier contains all 23 country groups.
-
-The country-to-region mapping is explicitly listed in `run_gbu_dea.py`. It is a reconstructed mapping and should be checked against the original study's supplementary documentation before the regional classification is used in a publication.
-
-## Model outline
-
-For each evaluated bank, the model minimizes the input contraction factor \(\theta\), subject to output requirements and variable-returns-to-scale convexity. In the robust input constraints, only the **reference inputs** are uncertain. The evaluated bank's input and output data, and all output coefficients, are held fixed.
-
-For input \(k\), the robust constraint has the form
-
-\[
-\sum_j x_{kj}\lambda_j + \delta\,\beta_{\mathrm{GBU}}\big((x_{kj}\lambda_j)_j\big)
-\leq \theta x_{k0},
-\]
-
-with the output constraints
-
-\[
-\sum_j y_{rj}\lambda_j \geq y_{r0},\qquad
-\sum_j\lambda_j=1,\qquad \lambda_j\geq 0.
-\]
-
-The GBU support function uses a local budget within each country and a global budget across country-level activations. Its linear programming representation is incorporated into the BCC model.
-
-The script also solves a single-level BS comparator. The BS model uses the same relative uncertainty radius and the same numerical value of the global budget, but applies one flat budget over reference banks. The GBU and BS uncertainty sets therefore have different structures; the comparison is between these two uncertainty specifications, not between identical uncertainty sets.
-
-## Scenario settings
-
-The default analysis evaluates the following 12 combinations:
-
-| Parameter | Values |
-|---|---|
-| Relative upward reference-input uncertainty, \(\delta\) | 0.01, 0.025, 0.05 |
-| Local country budget, \(\Gamma_{\mathrm{local}}\) | 1 |
-| Global activation budget, \(\Gamma_{\mathrm{global}}\) | 1, 2, 3, 5 |
-
-The conventional BCC scores are also computed as the zero-uncertainty baseline. The default setting `QUICK_TEST = False` evaluates all 250 banks. A quick test can be enabled in the script for debugging, but its partial-sample results must not be reported as full-sample empirical results.
-
-## Installation
-
-Python 3.10 or later is recommended. From the repository root, create and activate a virtual environment if desired, then install the dependencies:
-
-```bash
-python -m venv .venv
-```
-
-On Windows:
-
-```powershell
-.venv\Scripts\activate
-```
-
-On macOS or Linux:
-
-```bash
-source .venv/bin/activate
-```
-
-Install the required packages:
+Python 3.10 or later is recommended. Install dependencies with:
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-## Run the analysis
+The LPs are solved with SciPy's `linprog` interface to HiGHS; no proprietary optimization solver is required.
 
-After placing the source workbook in `data/`, run:
+## Reproduction steps
+
+From the repository root, run:
 
 ```bash
-python run_gbu_dea.py
+python scripts/run_main_analysis.py
+python scripts/run_random_partitions.py
+python scripts/validate_results.py
 ```
 
-The optimization problems are solved using `scipy.optimize.linprog` with the HiGHS method. The script creates the output directory automatically.
+Alternatively, open `GDEA_reproducibility.ipynb` and execute its cells in order. The main analysis evaluates all combinations of `delta = {0.01, 0.025, 0.05}` and `Gamma_G = {1, 2, 3, 5}` for GBU, product-calibrated flat BS, and local-only GBU. The random-partition analysis is a separate computationally intensive experiment configured for 1,000 replications and supports checkpoint-based resumption.
 
-To run the notebook instead, open `GDEA_GitHub.ipynb` in Jupyter or JupyterLab and execute its cells in order. The script is the recommended entry point for a command-line run.
+## Outputs
 
-## Generated outputs
+Generated outputs are saved under `results/`. The validation script checks the expected main-analysis and Proposition 6 record counts, verifies that 1,000 distinct random partitions are present, and creates `results/GBU_DEA_reproducibility_outputs.zip`. Generated outputs are not committed by default.
 
-The script writes its results to:
+## Important reproducibility qualifications
 
-```text
-results/TwoLevel_GBU_DEA_Results/
-```
+- The country-to-region assignment is encoded explicitly in the scripts. It must be checked against the original supplementary documentation before being described as independently verified.
+- The Proposition 6 equality diagnostic is evaluated using solver-selected optimal intensity vectors. If an LP has multiple optimal intensity vectors, the reported diagnostic can depend on the selected optimum.
+- The random-partition experiment preserves the within-region multiset of country-group sizes. Its reported empirical quantile ranges are not bootstrap confidence intervals.
+- The workbook is not redistributed by this repository. Users are responsible for obtaining it lawfully and complying with its terms.
 
-Principal files include:
+## Suggested citation
 
-- `TwoLevel_GBU_Empirical_Results.xlsx`: workbook containing bank-level scores and summary/diagnostic tables.
-- `TwoLevel_GBU_Bank_Scores.csv`: bank-level conventional and robust scores.
-- `GBU_vs_BS_Summary.csv`: aggregate comparison of GBU and single-level BS scores.
-- `GBU_vs_BS_Bank_Level.csv`: bank-level paired GBU–BS score differences.
-- `Overall_Summary.csv` and `Regional_Summary.csv`: overall and regional summaries.
-- `Ranking_Stability.csv`: ranking comparisons across conventional and robust scores.
-- `Monotonicity.csv`: diagnostics for score changes as the global budget increases.
-- `Country_Heterogeneity.csv`: country-level summaries of paired GBU–BS differences.
-- `GBU_BS_Ranking_Overlap.csv`: ranking correlation and best/worst decile overlap for GBU and BS.
-- `Country_Cluster_Bootstrap.csv`: country-cluster bootstrap intervals for paired score differences.
-- `Proposition6_Cases.csv` and `Proposition6_Equality_Frequency.csv`: numerical support-function checks associated with Proposition 6.
-
-The Excel workbook also contains the corresponding tables as separate worksheets.
-
-## Bootstrap interpretation
-
-The country-cluster bootstrap resamples countries and calculates intervals for the **observed paired bank-level score differences**. The DEA frontiers are not re-estimated within each bootstrap replication. These intervals therefore describe resampling variability of the fixed estimated score differences; they are not a full bootstrap that repeats the DEA estimation procedure.
-
-The random seed and number of replications are set in `run_gbu_dea.py` (`BOOTSTRAP_SEED` and `BOOTSTRAP_REPS`). The default is 5,000 replications.
-
-## Reproducibility notes and limitations
-
-1. Results depend on the exact source workbook and its first worksheet. Check that the workbook has the expected columns and observations.
-2. The regional country mapping is reconstructed in the code and requires verification against the source documentation.
-3. The primary specification uses three inputs and three outputs as listed above. The script does not silently substitute the alternative variable specification from earlier exploratory notebook cells.
-4. The robust perturbations are upward-only and apply to reference inputs. Outputs and target-bank observations are fixed.
-5. The GBU and BS models use different uncertainty geometries. A numerical comparison at the same values of \(\delta\) and \(\Gamma_{\mathrm{global}}\) does not mean that their uncertainty sets coincide.
-6. The country-cluster bootstrap does not re-estimate the DEA frontiers in each replication.
-7. The code produces numerical results from the supplied workbook; this repository does not contain precomputed empirical results or the source data.
-
-## Citation
-
-If you use this code, please cite the associated research manuscript. A formal citation can be added here once the manuscript's publication details are available. Please also cite the original source of the bank-level supplementary dataset according to its documentation.
-
-## License
-
-No software license is currently specified. Unless a license is added to this repository, reuse, modification, and redistribution are not granted by an explicit open-source license. Add a license only after the repository owner has selected the intended terms.
+If you use this code, cite the associated manuscript: *Grouped Budgeted Uncertainty DEA: A Two-Level Robust BCC Efficiency Model*. Add the final bibliographic details after publication.
